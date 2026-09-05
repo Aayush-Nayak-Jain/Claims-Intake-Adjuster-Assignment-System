@@ -1,10 +1,12 @@
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
+import java.util.stream.Collectors;
 
 public class ClaimsManager {
     private final Map<String, Policy> policies;
@@ -12,6 +14,7 @@ public class ClaimsManager {
     private final Map<String, Claim> claims;
     private final Queue<Claim> queuedClaims;
     private int claimCounter = 1;
+    private ClaimAssignmentStrategy defaultStrategy = new LowestCaseloadStrategy();
 
     public ClaimsManager() {
         this.policies = new HashMap<>();
@@ -57,6 +60,16 @@ public class ClaimsManager {
         adjusters.put(adj3.getAdjusterId(), adj3);
     }
 
+    public ClaimAssignmentStrategy getDefaultStrategy() {
+        return defaultStrategy;
+    }
+
+    public void setDefaultStrategy(ClaimAssignmentStrategy defaultStrategy) {
+        if (defaultStrategy != null) {
+            this.defaultStrategy = defaultStrategy;
+        }
+    }
+
     public String fileClaim(String policyId, String policyholderId, ClaimType type, double claimedAmount, String description) {
         // Step 1: Does policy exist?
         Policy policy = policies.get(policyId);
@@ -79,23 +92,59 @@ public class ClaimsManager {
         Claim claim = new Claim(claimId, policyholderId, policyId, type, claimedAmount, description);
         claims.put(claimId, claim);
 
-        // Immediately attempt automatic adjuster assignment (lowest caseload specialist with capacity)
-        Optional<Adjuster> selectedAdjuster = adjusters.values().stream()
-                .filter(adj -> adj.specializes(type) && adj.hasCapacity())
-                .min(Comparator.comparingInt(Adjuster::getCurrentCaseload)
-                        .thenComparing(Adjuster::getAdjusterId));
+        // Immediately attempt automatic adjuster assignment via strategy
+        boolean assigned = assignClaim(claim, defaultStrategy);
 
-        if (selectedAdjuster.isPresent()) {
-            Adjuster adjuster = selectedAdjuster.get();
+        if (assigned) {
+            return "Success: Claim " + claimId + " filed successfully and assigned to " + claim.getCurrentAssigneeId() + " (Status: UNDER_REVIEW).";
+        } else {
+            return "Success: Claim " + claimId + " filed successfully. No eligible adjuster available; claim queued (Status: FILED).";
+        }
+    }
+
+    public boolean assignClaim(Claim claim, ClaimAssignmentStrategy strategy) {
+        if (claim == null) {
+            return false;
+        }
+        if (strategy == null) {
+            strategy = defaultStrategy;
+        }
+
+        List<Adjuster> eligible = adjusters.values().stream()
+                .filter(adj -> adj.specializes(claim.getClaimType()))
+                .collect(Collectors.toList());
+
+        Optional<Adjuster> assigned = strategy.assign(claim, eligible);
+
+        if (assigned.isPresent()) {
+            Adjuster adjuster = assigned.get();
             claim.setCurrentAssigneeId(adjuster.getAdjusterId());
             adjuster.incrementCaseload();
             claim.transitionTo(new UnderReviewState(adjuster.getAdjusterId()), ClaimStatus.UNDER_REVIEW, adjuster.getAdjusterId());
-            return "Success: Claim " + claimId + " filed successfully and assigned to " + adjuster.getAdjusterId() + " (Status: UNDER_REVIEW).";
+            return true;
         } else {
-            // No eligible adjuster has capacity -> queue the claim, status remains FILED
-            queuedClaims.offer(claim);
-            return "Success: Claim " + claimId + " filed successfully. No eligible adjuster available; claim queued (Status: FILED).";
+            if (!queuedClaims.contains(claim)) {
+                queuedClaims.offer(claim);
+            }
+            return false;
         }
+    }
+
+    public int retryQueuedClaims(ClaimAssignmentStrategy strategy) {
+        if (strategy == null) {
+            strategy = defaultStrategy;
+        }
+        int assignedCount = 0;
+        int size = queuedClaims.size();
+        for (int i = 0; i < size; i++) {
+            Claim claim = queuedClaims.poll();
+            if (claim == null) break;
+            boolean assigned = assignClaim(claim, strategy);
+            if (assigned) {
+                assignedCount++;
+            }
+        }
+        return assignedCount;
     }
 
     public Map<String, Policy> getPolicies() {
@@ -152,4 +201,5 @@ public class ClaimsManager {
         }
     }
 }
+
 
