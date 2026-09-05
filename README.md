@@ -31,6 +31,46 @@ java -cp bin Main
 
 ---
 
+## Pre-seeded Data
+
+On startup, `ClaimsManager.initializeData()` automatically loads the following policies and adjusters into memory. Use these IDs directly in the CLI — no manual setup required.
+
+### Policies
+
+| Policy ID | Type           | Deductible   | Coverage Limit | Active |
+|-----------|----------------|-------------|----------------|--------|
+| `POL001`  | AutoPolicy     | $500.00     | $50,000.00     | ✅ Yes  |
+| `POL002`  | HealthPolicy   | $1,000.00   | $100,000.00    | ✅ Yes  |
+| `POL003`  | PropertyPolicy | $2,000.00   | $200,000.00    | ✅ Yes  |
+
+### Adjusters
+
+| Adjuster ID | Specializations      | Max Caseload |
+|-------------|----------------------|-------------|
+| `ADJ001`    | AUTO, HEALTH         | 5           |
+| `ADJ002`    | PROPERTY             | 5           |
+| `ADJ003`    | AUTO                 | 3           |
+
+### Quick-Start Workflow
+
+Use the pre-seeded data to walk through a full claim lifecycle immediately after launching:
+
+```
+1. File a claim      → Policy: POL001 | Policyholder: PH001 | Type: AUTO | Amount: 5000
+   → Auto-assigned to ADJ001 (lowest caseload AUTO specialist)
+
+2. Approve claim     → Claim ID: CLM001 | Adjuster: ADJ001
+
+3. Settle claim      → Claim ID: CLM001 | Adjuster: ADJ001
+   → Payout = $5,000.00 - $500.00 deductible = $4,500.00 (within $50,000 limit)
+
+4. Show adjuster caseloads  → ADJ001 caseload drops back to 0/5 after settlement
+```
+
+> **Note**: Claim IDs are auto-generated sequentially starting from `CLM001`. The system resets to `CLM001` each time the application is restarted.
+
+---
+
 ## Design Overview
 
 ### Core Class Structure
