@@ -240,6 +240,51 @@ public class ClaimsManager {
         }
     }
 
+    public String getCaseloadsReport() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("=== Adjuster Caseloads ===\n");
+        if (adjusters.isEmpty()) {
+            sb.append("No adjusters registered.\n");
+            return sb.toString();
+        }
+
+        for (Adjuster adj : adjusters.values()) {
+            sb.append("Adjuster ID: ").append(adj.getAdjusterId()).append("\n");
+            sb.append("  Specializations: ").append(adj.getSpecializations()).append("\n");
+            sb.append("  Current Caseload: ").append(adj.getCurrentCaseload()).append(" / ").append(adj.getMaxCaseload());
+            if (!adj.hasCapacity()) {
+                sb.append(" (at capacity)");
+            }
+            sb.append("\n\n");
+        }
+        return sb.toString().trim();
+    }
+
+    public String getClaimStatusReport(String claimId) {
+        Claim claim = claims.get(claimId);
+        if (claim == null) {
+            return "Error: Claim " + claimId + " does not exist.";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("Claim ID: ").append(claim.getClaimId()).append("\n");
+        sb.append("Policyholder: ").append(claim.getPolicyholderId()).append("\n");
+        sb.append("Policy: ").append(claim.getPolicyId()).append("\n");
+        sb.append("Claim Type: ").append(claim.getClaimType()).append("\n");
+        sb.append(String.format("Claimed Amount: $%,.2f\n", claim.getClaimedAmount()));
+        sb.append("Current Status: ").append(claim.getCurrentStatus()).append("\n");
+
+        String assignee = claim.getCurrentAssigneeId();
+        sb.append("Assigned to: ").append(assignee != null ? assignee : "None (Queued)").append("\n\n");
+
+        sb.append("Status History:\n");
+        for (StatusEvent event : claim.getHistory()) {
+            sb.append("  ").append(event).append("\n");
+        }
+
+        return sb.toString().trim();
+    }
+
     public Map<String, Policy> getPolicies() {
         return Collections.unmodifiableMap(policies);
     }
