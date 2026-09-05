@@ -1,0 +1,12 @@
+# Build output
+bin/
+*.class
+
+# Development plan
+PS07_DEVELOPMENT_PLAN_REVISED.md
+
+# IDE & OS files
+.idea/
+.vscode/
+*.swp
+.DS_Store
