@@ -102,4 +102,13 @@ public class Claim {
     public void settle(String adjusterId) {
         this.currentState.settle(this, adjusterId);
     }
+
+    public double calculatePayout(Policy policy) {
+        if (policy == null || (currentStatus != ClaimStatus.APPROVED && currentStatus != ClaimStatus.SETTLED)) {
+            return 0.0;
+        }
+        double afterDeductible = claimedAmount - policy.getDeductible();
+        double payout = Math.min(afterDeductible, policy.getCoverageLimit());
+        return Math.max(payout, 0.0);
+    }
 }

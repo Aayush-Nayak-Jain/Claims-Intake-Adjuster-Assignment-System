@@ -87,7 +87,12 @@ public class ClaimsManager {
             return "Error: Policy " + policyId + " does not cover " + type + " claims.";
         }
 
-        // Step 4: All validation checks passed -> create Claim object
+        // Step 4 (Option B): Is claimed amount less than deductible?
+        if (claimedAmount < policy.getDeductible()) {
+            return String.format("Error: Claimed amount ($%.2f) is less than policy deductible ($%.2f). Claim rejected.", claimedAmount, policy.getDeductible());
+        }
+
+        // Step 5: All validation checks passed -> create Claim object
         String claimId = generateClaimId();
         Claim claim = new Claim(claimId, policyholderId, policyId, type, claimedAmount, description);
         claims.put(claimId, claim);
@@ -100,6 +105,18 @@ public class ClaimsManager {
         } else {
             return "Success: Claim " + claimId + " filed successfully. No eligible adjuster available; claim queued (Status: FILED).";
         }
+    }
+
+    public double calculatePayout(String claimId) {
+        Claim claim = claims.get(claimId);
+        if (claim == null) {
+            return 0.0;
+        }
+        Policy policy = policies.get(claim.getPolicyId());
+        if (policy == null) {
+            return 0.0;
+        }
+        return claim.calculatePayout(policy);
     }
 
     public boolean assignClaim(Claim claim, ClaimAssignmentStrategy strategy) {
