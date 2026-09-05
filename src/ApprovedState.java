@@ -2,12 +2,12 @@ public class ApprovedState implements ClaimState {
 
     @Override
     public void approve(Claim claim, String adjusterId) {
-        throw new IllegalStateException("Claim is already APPROVED.");
+        throw new IllegalStateException("Claim " + (claim != null ? claim.getClaimId() : "") + " is already APPROVED.");
     }
 
     @Override
     public void reject(Claim claim, String adjusterId) {
-        throw new IllegalStateException("Cannot reject a claim that has already been APPROVED.");
+        throw new IllegalStateException("Cannot reject claim " + (claim != null ? claim.getClaimId() : "") + " after it has been APPROVED.");
     }
 
     @Override

@@ -27,7 +27,7 @@ public class UnderReviewState implements ClaimState {
 
     @Override
     public void settle(Claim claim, String adjusterId) {
-        throw new IllegalStateException("Cannot settle claim directly from UNDER_REVIEW state.");
+        throw new IllegalStateException("Cannot settle claim " + (claim != null ? claim.getClaimId() : "") + " directly from UNDER_REVIEW state. Claim must be APPROVED first.");
     }
 
     private void validateAssignedAdjuster(Claim claim, String adjusterId) {

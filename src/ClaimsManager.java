@@ -147,6 +147,82 @@ public class ClaimsManager {
         return assignedCount;
     }
 
+    public String approveClaim(String claimId, String adjusterId) {
+        Claim claim = claims.get(claimId);
+        if (claim == null) {
+            return "Error: Claim " + claimId + " does not exist.";
+        }
+        Adjuster adjuster = adjusters.get(adjusterId);
+        if (adjuster == null) {
+            return "Error: Adjuster " + adjusterId + " does not exist.";
+        }
+
+        try {
+            claim.approve(adjusterId);
+            return "Success: Claim " + claimId + " has been APPROVED by " + adjusterId + ".";
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    public String rejectClaim(String claimId, String adjusterId) {
+        Claim claim = claims.get(claimId);
+        if (claim == null) {
+            return "Error: Claim " + claimId + " does not exist.";
+        }
+        Adjuster adjuster = adjusters.get(adjusterId);
+        if (adjuster == null) {
+            return "Error: Adjuster " + adjusterId + " does not exist.";
+        }
+
+        try {
+            String assignedAdjusterId = claim.getCurrentAssigneeId();
+            claim.reject(adjusterId);
+
+            // Release caseload for the assigned adjuster upon REJECTED
+            Adjuster assignedAdjuster = adjusters.get(assignedAdjusterId);
+            if (assignedAdjuster != null) {
+                assignedAdjuster.decrementCaseload();
+            }
+
+            // Retry any queued claims since capacity opened up
+            int retriedCount = retryQueuedClaims(defaultStrategy);
+
+            return "Success: Claim " + claimId + " has been REJECTED by " + adjusterId + ". Assigned adjuster capacity released. (Queued claims reassigned: " + retriedCount + ")";
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
+    public String settleClaim(String claimId, String adjusterId) {
+        Claim claim = claims.get(claimId);
+        if (claim == null) {
+            return "Error: Claim " + claimId + " does not exist.";
+        }
+        Adjuster adjuster = adjusters.get(adjusterId);
+        if (adjuster == null) {
+            return "Error: Adjuster " + adjusterId + " does not exist.";
+        }
+
+        try {
+            String assignedAdjusterId = claim.getCurrentAssigneeId();
+            claim.settle(adjusterId);
+
+            // Release caseload for the assigned adjuster upon SETTLED
+            Adjuster assignedAdjuster = adjusters.get(assignedAdjusterId);
+            if (assignedAdjuster != null) {
+                assignedAdjuster.decrementCaseload();
+            }
+
+            // Retry any queued claims since capacity opened up
+            int retriedCount = retryQueuedClaims(defaultStrategy);
+
+            return "Success: Claim " + claimId + " has been SETTLED by " + adjusterId + ". Assigned adjuster capacity released. (Queued claims reassigned: " + retriedCount + ")";
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return "Error: " + e.getMessage();
+        }
+    }
+
     public Map<String, Policy> getPolicies() {
         return Collections.unmodifiableMap(policies);
     }
